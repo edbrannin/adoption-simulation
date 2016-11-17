@@ -25,8 +25,8 @@ def run_trials(pool_size, iterations, give_up_after=200):
         answers[t.run()] += 1
     return answers
 
-def analyze(trial):
-    result = expand(trial)
+def analyze_trial(trial):
+    result = tuple(expand(trial))
     m = max(result)
     count_at_max = len([x for x in result if x == m])
     print "  - Mean: {}, Median: {}, Std dev: {}, Variance: {}, Max: {}, Count at max: {} ({:.3}%)".format(
@@ -36,10 +36,10 @@ def analyze(trial):
             numpy.var(result),
             m,
             count_at_max,
-            count_at_max / len(result)
+            float(count_at_max) / len(result)
             )
     for x in range(10, 100, 10):
-        print "  - {:.3}% at/under {}".format(x, result[(x * len(result)) // 100])
+        print "  - {:.3}% at/under {}".format(float(x), result[(x * len(result)) // 100])
 
 def expand(trial):
     answer = []
@@ -47,9 +47,13 @@ def expand(trial):
         answer += [k] * v
     return answer
 
-@click.command()
+@click.group()
+def main():
+    pass
+
+@main.command()
 @click.option("--iterations", default=5000000)
-def main(iterations=5000):
+def simulate(iterations=5000):
     random.seed()
     trials_by_pool = dict()
     for x in (10, 20, 30, 40, 50):
@@ -59,6 +63,18 @@ def main(iterations=5000):
         analyze(result)
     with open('results.json', 'w') as out:
         json.dump(trials_by_pool, out)
+
+
+@main.command("analyze")
+@click.argument("in_path")
+def analyze(in_path):
+    with open(in_path, 'r') as in_file:
+        trials_by_pool = json.load(in_file)
+    for pool_size, result in sorted(trials_by_pool.items()):
+        print "Trials with pool_size={}".format(pool_size)
+        result = { int(k) : int(v) for k, v in result.items() }
+        analyze_trial(result)
+
 
 if __name__ == '__main__':
     main()
